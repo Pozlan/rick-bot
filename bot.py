@@ -195,17 +195,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": RICK_PROMPT},
-                *chat_histories[chat_id]
-            ],
-            max_tokens=150,
-            temperature=0.9
-        )
+       history = "\n".join(
+    message["content"] for message in chat_histories[chat_id]
+)
 
-        reply = response.choices[0].message.content.strip()
+prompt = f"""{RICK_PROMPT}
+
+Conversation:
+{history}
+"""
+
+response = gemini_client.models.generate_content(
+    model="gemini-2.5-flash",
+    contents=prompt
+)
+
+reply = response.text.strip()
 
         chat_histories[chat_id].append({
             "role": "assistant",
