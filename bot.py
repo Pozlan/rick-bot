@@ -6,6 +6,7 @@ import json
 import base64
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from groq import Groq
+from google import genai
 from telegram import Update, ReactionTypeEmoji
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 from telegram.request import HTTPXRequest
@@ -18,9 +19,12 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 GROQ_API_KEY = os.environ["GROQ_API_KEY"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 TON_WALLET = os.environ.get("TON_WALLET", "")
 
 client = Groq(api_key=GROQ_API_KEY)
+
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 chat_histories = {}
 MAX_HISTORY = 40
