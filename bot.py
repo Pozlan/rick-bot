@@ -27,6 +27,7 @@ client = Groq(api_key=GROQ_API_KEY)
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
 chat_histories = {}
+chat_summaries = {}
 MAX_HISTORY = 12
 VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
