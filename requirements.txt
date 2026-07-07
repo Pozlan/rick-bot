@@ -1,0 +1,5 @@
+python-telegram-bot[job-queue]
+groq
+google-genai
+pytz
+aiohttp
