@@ -798,22 +798,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt = build_prompt(uid, mood, chat_id)
 
     try:
-        # Web search for recent/current info
-        if needs_web_search(msg.text):
+        # Web search handles both recent info AND football questions
+        if needs_web_search(msg.text) or is_football_question(msg.text):
             search_reply = await get_search_reply(msg.text, prompt)
-            if search_reply:
-                reply = search_reply
-            # Fall through to football or normal if search returns nothing
-            else:
-                if is_football_question(msg.text):
-                    football_reply = await get_football_reply(msg.text, prompt)
-                    reply = football_reply if football_reply else await generate_reply(prompt, chat_histories[chat_id])
-                else:
-                    reply = await generate_reply(prompt, chat_histories[chat_id])
-        # Football question without needing web search
-        elif is_football_question(msg.text):
-            football_reply = await get_football_reply(msg.text, prompt)
-            reply = football_reply if football_reply else await generate_reply(prompt, chat_histories[chat_id])
+            reply = search_reply if search_reply else await generate_reply(prompt, chat_histories[chat_id])
         else:
             reply = await generate_reply(prompt, chat_histories[chat_id])
         chat_histories[chat_id].append({"role": "assistant", "content": reply})
