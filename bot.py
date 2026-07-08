@@ -582,13 +582,28 @@ RECENT_KEYWORDS = [
     "who won", "world cup 2026", "2026", "right now", "currently",
     "this year", "this week", "today", "recent", "update", "news",
     "still", "anymore", "is he", "is she", "did they", "what happened",
-    "transfer", "signed", "released", "dropped", "announced"
+    "transfer", "signed", "released", "dropped", "announced",
+    "list", "who are", "which teams", "what teams", "standings",
+    "qualified", "knocked out", "still in", "groups", "knockout",
+    "quarter", "semi", "final", "round of"
 ]
 
-def needs_web_search(text: str) -> bool:
-    """Detect if the message is asking about something recent or current."""
+def needs_web_search(text: str, history: list = None) -> bool:
+    """
+    Detect if the message needs a web search.
+    Also triggers if recent conversation was about a searchable topic
+    and this looks like a follow-up question.
+    """
     t = text.lower()
-    return any(kw in t for kw in RECENT_KEYWORDS)
+    if any(kw in t for kw in RECENT_KEYWORDS):
+        return True
+    # Short follow-up question after a recent/football topic in history
+    if history and len(text.split()) <= 8:
+        recent = " ".join(m["content"].lower() for m in history[-4:])
+        followup_signals = ["world cup", "tournament", "league", "album", "song", "movie", "transfer", "season"]
+        if any(s in recent for s in followup_signals):
+            return True
+    return False
 
 def web_search(query: str, max_results: int = 4) -> str:
     """
@@ -799,7 +814,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         # Web search handles both recent info AND football questions
-        if needs_web_search(msg.text) or is_football_question(msg.text):
+        if needs_web_search(msg.text, chat_histories.get(chat_id, [])) or is_football_question(msg.text):
             search_reply = await get_search_reply(msg.text, prompt)
             reply = search_reply if search_reply else await generate_reply(prompt, chat_histories[chat_id])
         else:
