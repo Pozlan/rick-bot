@@ -88,7 +88,7 @@ def pick_reaction(text: str) -> str:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # TIME-BASED MOOD
-# Gives Rick a subtle personality shift based on time of day (EAT timezone).
+# Gives Dex a subtle personality shift based on time of day (EAT timezone).
 # ──────────────────────────────────────────────────────────────────────────────
 
 def get_time_mood() -> str:
@@ -96,13 +96,13 @@ def get_time_mood() -> str:
     if 6 <= h < 10:   return "Morning. Slightly tired. Keep replies brief."
     if 10 <= h < 18:  return "Normal hours. Default mode."
     if 18 <= h < 23:  return "Evening. More energetic and sharp."
-    return "Very late night. Slightly chaotic but still believably Rick."
+    return "Very late night. Slightly chaotic but still believably Dex."
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # CONVERSATION MOOD DETECTION (Enhanced)
 # Reads the last few messages to understand what's actually happening in the chat.
-# Rick uses this to adapt without announcing it.
+# Dex uses this to adapt without announcing it.
 # ──────────────────────────────────────────────────────────────────────────────
 
 def detect_mood(history: list) -> str:
@@ -174,7 +174,7 @@ user_data = load_user_data()
 # ──────────────────────────────────────────────────────────────────────────────
 # CHAT SUMMARIES — Persistent conversation memory across restarts
 # Every active group gets a rolling summary stored on disk.
-# On restart, Rick loads these and remembers what happened before.
+# On restart, Dex loads these and remembers what happened before.
 # ──────────────────────────────────────────────────────────────────────────────
 
 def load_summaries() -> dict:
@@ -341,7 +341,7 @@ async def maybe_summarize(chat_id) -> None:
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DYNAMIC PROMPT BUILDER
-# Builds Rick's system prompt fresh for every request.
+# Builds Dex's system prompt fresh for every request.
 # Combines: core personality + time mood + user memory + conversation summary + mood.
 # This is modular so each section can be updated independently.
 # ──────────────────────────────────────────────────────────────────────────────
@@ -391,7 +391,7 @@ Never write asterisks. Never monologue. Never sound like a bot or an assistant."
 
 def build_prompt(uid: str, mood: str, chat_id) -> str:
     """
-    Dynamically construct Rick's system prompt for this specific request.
+    Dynamically construct Dex's system prompt for this specific request.
     Keeps token usage minimal by only including relevant context sections.
     """
     sections = [CORE_PERSONALITY]
@@ -469,7 +469,7 @@ async def react_to_message(context, chat_id, message_id, text: str = "") -> None
 
 # ──────────────────────────────────────────────────────────────────────────────
 # ANNOYANCE / IGNORE SYSTEM
-# Rick gets annoyed by low-effort messages and rapid spamming.
+# Dex gets annoyed by low-effort messages and rapid spamming.
 # Score decays naturally over time. Two stages: warning, then silence.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -751,7 +751,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat_id not in chat_histories:
         chat_histories[chat_id] = []
 
-    # Log every message — Rick observes the full conversation
+    # Log every message — Dex observes the full conversation
     chat_histories[chat_id].append({
         "role": "user",
         "content": f"[{display_name} ({user_ctx})]: {msg.text}",
@@ -760,7 +760,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Summarize and trim if history is getting long
     await maybe_summarize(chat_id)
 
-    # Decide whether Rick should respond
+    # Decide whether Dex should respond
     triggered    = is_triggered(update, context.bot.username, context.bot.id)
     random_roll  = random.random()
     random_chime = not triggered and msg.chat.type != "private" and random_roll < 0.10
@@ -892,7 +892,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         mood        = detect_mood(chat_histories[chat_id])
         prompt      = build_prompt(uid, mood, chat_id)
-        vision_text = "React to this image exactly like Rick would in a group chat. Stay short and in character."
+        vision_text = "React to this image exactly like Dex would in a group chat. Stay short and in character."
         if caption:
             vision_text += f' They captioned it: "{caption}"'
 
@@ -942,10 +942,11 @@ async def post_stupids_of_day(context: ContextTypes.DEFAULT_TYPE):
         else:
             names_list = "\n".join([f"{i+1}. {h}" for i, (h, _) in enumerate(top)])
             prompt = (
-                "You are Rick Sanchez posting to your Telegram channel.\n"
+                f"{CORE_PERSONALITY}\n\n"
+                "You are posting to your Telegram channel.\n"
                 f"Write the 'Stupids of the Day' post. Candidates in order:\n{names_list}\n\n"
                 "Rules: Short intro line, then each person gets a unique one-line roast. "
-                "Under 6 lines total. No hashtags. No emojis. No 'Listen up'. No 'Morty'. "
+                "Under 6 lines total. No hashtags. No emojis. "
                 "Sharp and funny, not mean-spirited."
             )
             response = await generate_reply(prompt, [])
@@ -961,8 +962,9 @@ async def post_daily_fact(context: ContextTypes.DEFAULT_TYPE):
     """8:30 PM EAT: Post a mind-blowing fact to the channel."""
     try:
         response = await generate_reply(
-            "You are Rick Sanchez. Drop one accurate, mind-blowing fact. 2 short sentences max. "
-            "Do NOT say 'Listen up', 'Morty', 'I know what you're thinking', or 'blowing your mind'. "
+            f"{CORE_PERSONALITY}\n\n"
+            "Drop one accurate, mind-blowing fact to your Telegram channel. 2 short sentences max. "
+            "Do NOT say 'I know what you're thinking' or 'blowing your mind'. "
             "Just the fact and one sharp reaction. No hashtags. No emojis. "
             "Like: 'A day on Venus is longer than a year on Venus. Let that ruin your morning.'",
             []
