@@ -198,6 +198,7 @@ async def get_football_reply(message_text: str, prompt: str, topic: str = "") ->
             return ""
 
         data_summary = "\n\n".join(data_parts)
+        logger.info(f"Football data sent to model: {data_summary}")
         football_prompt = (
             f"{prompt}\n\n"
             f"Someone just asked about football: \"{message_text}\"\n\n"
