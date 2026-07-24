@@ -131,13 +131,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Nothing real came back. Tell the model explicitly not to
             # invent a score/date/stat instead of guessing confidently.
             fallback_prompt = prompt
-            if needed_current_info:
-                fallback_prompt += (
-                    "\n\nYou tried to look this up but didn't get real data back. "
-                    "Do NOT invent a specific score, date, stat, or result — that's "
-                    "worse than not answering. It's fine to say you don't know, ask "
-                    "them to fill you in, or make a vague in-character comment instead."
-                )
+           if needed_current_info:
+    fallback_prompt += (
+        "\n\nYou tried to look this up but didn't get real data back. "
+        "Do NOT invent or guess a name, score, date, or stat — not even as a "
+        "question ('was it X?'). That's still passing off a guess as real info. "
+        "Just say straight up you don't have that info, or ask them to fill you in."
+    )
             reply = await generate_reply(fallback_prompt, chat_histories[chat_id])
 
         chat_histories[chat_id].append({"role": "assistant", "content": reply})
