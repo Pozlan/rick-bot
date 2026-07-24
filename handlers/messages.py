@@ -1,6 +1,6 @@
 """
 Message ↓ trigger check ↓ annoyance/ignore check ↓ mood + prompt build
-↓ web search / football routing (if needed) ↓ LLM ↓ store + reply
+↓ football / web search routing (if needed) ↓ LLM ↓ store + reply
 
 This is the core pipeline described in the roadmap. Right now intent
 detection is just needs_web_search()/is_football_question() keyword checks;
@@ -30,13 +30,6 @@ logger = logging.getLogger(__name__)
 
 
 def classify_trigger(update: Update, bot_username: str, bot_id: int) -> "str | None":
-    """
-    Returns the reason Dex should respond, or None if nothing triggered it.
-    One of: "private", "reply", "mention". Order matters only for which
-    label wins when more than one is true at once (e.g. replying to Dex
-    while also saying "dex") — doesn't change whether Dex responds, only
-    which reason gets recorded.
-    """
     msg = update.message
     if not msg or not msg.text:
         return None
@@ -71,16 +64,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat_id not in chat_histories:
         chat_histories[chat_id] = []
 
-    # Log every message — Dex observes the full conversation
     chat_histories[chat_id].append({
         "role": "user",
         "content": f"[{display_name} ({user_ctx})]: {msg.text}",
     })
 
-    # Summarize and trim if history is getting long
     await maybe_summarize(chat_id)
 
-    # Decide whether Dex should respond
     trigger_type = classify_trigger(update, context.bot.username, context.bot.id)
     triggered    = trigger_type is not None
     random_roll  = random.random()
@@ -100,7 +90,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     should_react = random.random() < 0.35
     update_user(user, msg.text)
 
-    # Annoyance check (only for direct triggers, not random chimes)
     if triggered:
         evaluate_annoyance(uid, msg.text)
         ignore_state = get_ignore_state(uid)
@@ -110,7 +99,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await msg.reply_text(random.choice(DISMISSAL_LINES))
             return
 
-    # Fire-and-forget fact extraction every N interactions
     interactions = user_data.get(uid, {}).get("interactions", 0)
     if interactions % FACT_EXTRACT_EVERY == 0:
         recent_msgs = [m["content"] for m in chat_histories.get(chat_id, [])[-20:]]
@@ -128,27 +116,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt = build_prompt(uid, conv_ctx, chat_id)
 
     try:
-        # Web search for recent/current info
-        if needs_web_search(msg.text):
-            search_reply = await get_search_reply(msg.text, prompt)
-            if search_reply:
-                reply = search_reply
-            # Fall through to football or normal if search returns nothing
-            else:
-                if is_football_question(msg.text):
-                    football_reply = await get_football_reply(msg.text, prompt)
-                    reply = football_reply if football_reply else await generate_reply(prompt, chat_histories[chat_id])
-                else:
-                    reply = await generate_reply(prompt, chat_histories[chat_id])
-        # Football question without needing web search
-        elif is_football_question(msg.text):
-            football_reply = await get_football_reply(msg.text, prompt)
-            reply = football_reply if football_reply else await generate_reply(prompt, chat_histories[chat_id])
-        else:
-            reply = await generate_reply(prompt, chat_histories[chat_id])
+        needed_current_info = needs_web_search(msg.text) or is_football_question(msg.text)
+        reply = None
+
+        # Football has a real, authoritative data source — check it FIRST.
+        if is_football_question(msg.text):
+            reply = await get_football_reply(msg.text, prompt, conv_ctx.current_topic)
+            if not reply and needs_web_search(msg.text):
+                reply = await get_search_reply(msg.text, prompt, conv_ctx.current_topic)
+        elif needs_web_search(msg.text):
+            reply = await get_search_reply(msg.text, prompt, conv_ctx.current_topic)
+
+        if not reply:
+            # Nothing real came back. Tell the model explicitly not to
+            # invent a score/date/stat instead of guessing confidently.
+            fallback_prompt = prompt
+            if needed_current_info:
+                fallback_prompt += (
+                    "\n\nYou tried to look this up but didn't get real data back. "
+                    "Do NOT invent a specific score, date, stat, or result — that's "
+                    "worse than not answering. It's fine to say you don't know, ask "
+                    "them to fill you in, or make a vague in-character comment instead."
+                )
+            reply = await generate_reply(fallback_prompt, chat_histories[chat_id])
+
         chat_histories[chat_id].append({"role": "assistant", "content": reply})
 
-        # Human-like typing delay — proportional to reply length
         words = len(reply.split())
         delay = min(random.uniform(1.5, 2.5) + (words * 0.05), 5.0)
         await context.bot.send_chat_action(chat_id=chat_id, action="typing")
