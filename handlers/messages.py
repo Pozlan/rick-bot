@@ -119,7 +119,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         needed_current_info = needs_web_search(msg.text) or is_football_question(msg.text)
         reply = None
 
-        # Football has a real, authoritative data source — check it FIRST.
         if is_football_question(msg.text):
             reply = await get_football_reply(msg.text, prompt, conv_ctx.current_topic)
             if not reply and needs_web_search(msg.text):
@@ -128,16 +127,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply = await get_search_reply(msg.text, prompt, conv_ctx.current_topic)
 
         if not reply:
-            # Nothing real came back. Tell the model explicitly not to
-            # invent a score/date/stat instead of guessing confidently.
             fallback_prompt = prompt
-           if needed_current_info:
-    fallback_prompt += (
-        "\n\nYou tried to look this up but didn't get real data back. "
-        "Do NOT invent or guess a name, score, date, or stat — not even as a "
-        "question ('was it X?'). That's still passing off a guess as real info. "
-        "Just say straight up you don't have that info, or ask them to fill you in."
-    )
+            if needed_current_info:
+                fallback_prompt += (
+                    "\n\nYou tried to look this up but didn't get real data back. "
+                    "Do NOT invent or guess a name, score, date, or stat — not even as a "
+                    "question ('was it X?'). That's still passing off a guess as real info. "
+                    "Just say straight up you don't have that info, or ask them to fill you in."
+                )
             reply = await generate_reply(fallback_prompt, chat_histories[chat_id])
 
         chat_histories[chat_id].append({"role": "assistant", "content": reply})
