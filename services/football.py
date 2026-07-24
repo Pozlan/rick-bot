@@ -20,6 +20,12 @@ BASE_URL = "https://api.football-data.org/v4"
 HEADERS  = {"X-Auth-Token": FOOTBALL_API_KEY}
 CACHE_TTL_SECONDS = 300   # 5 min — keeps us well under the 10 req/min free-tier limit
 
+HISTORICAL_KEYWORDS = ["last year", "last season", "previous season", "in 2024", "in 2025"]
+
+def is_historical_question(text: str) -> bool:
+    t = text.lower()
+    return any(kw in t for kw in HISTORICAL_KEYWORDS)
+    
 COMPETITION_CODES = {
     "PL":  "Premier League",
     "PD":  "La Liga",
